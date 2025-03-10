@@ -8,7 +8,7 @@ import { auth } from "./firebase";
 import "semantic-ui-css/semantic.min.css";
 import { Provider, useDispatch, useSelector } from "react-redux";
 import {store} from "./store/store";
-import { setUser } from "./actions";
+import { clearUser, setUser } from "./actions";
 import Spinner from "./components/Spinner";
 
 const Root = () => {
@@ -19,8 +19,11 @@ const Root = () => {
   useEffect(() => {
     const unsubscribe = auth.onAuthStateChanged((user) => {
       if (user) {
-        dispatch(setUser(user))
+        dispatch(setUser(user));
         navigate("/");
+      } else {
+        dispatch(clearUser());
+        navigate("/login");
       }
     });
 
@@ -29,12 +32,13 @@ const Root = () => {
 
   return (
     isLoading ? 
-    <Spinner /> :
-    <Routes>
-      <Route path="/" element={<App />} />
-      <Route path="/login" element={<Login />} />
-      <Route path="/register" element={<Register />} />
-    </Routes>
+      <Spinner /> 
+        :
+      <Routes>
+        <Route path="/" element={<App />} />
+        <Route path="/login" element={<Login />} />
+        <Route path="/register" element={<Register />} />
+      </Routes>
   );
 };
 
