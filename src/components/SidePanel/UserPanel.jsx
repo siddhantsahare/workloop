@@ -33,7 +33,7 @@ const UserPanel = () => {
         <Grid.Row style={{ padding: "1.2em", margin: 0 }}>
           {/* App Header */}
           <Header inverted floated="left" as="h2">
-            <Icon name="users" color="white" />
+            <Icon name="users" />
             <Header.Content>WorkLoop</Header.Content>
           </Header>
           {/* User Dropdown  */}

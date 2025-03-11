@@ -1,6 +1,6 @@
 import React, { useState } from "react";
-import { getAuth, createUserWithEmailAndPassword, updateProfile } from "firebase/auth";
-import { getDatabase, ref, set } from "firebase/database";
+import { createUserWithEmailAndPassword, updateProfile } from "firebase/auth";
+import { ref, set } from "firebase/database";
 import md5 from "md5";
 import { Grid, Form, Segment, Button, Header, Message, Icon } from "semantic-ui-react";
 import { Link } from "react-router-dom";
