@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useRef } from "react";
 import { ref, set, update, push, onChildAdded, off } from "firebase/database";
 import {
   Menu,
@@ -10,8 +10,9 @@ import {
   Segment,
   Divider,
 } from "semantic-ui-react";
-import { useSelector } from "react-redux";
+import { useSelector, useDispatch } from "react-redux";
 import { auth, database } from "../../firebase";
+import { setCurrentChannel } from "../../actions";
 
 const Channels = () => {
   const [channels, setChannels] = useState([]);
@@ -20,14 +21,27 @@ const Channels = () => {
     details: "",
   });
   const [modal, setModal] = useState(false);
+  const [activeChannelId, setActiveChannelId] = useState("");
+  const firstLoadRef = useRef(true);
   // channels listner
   const channelsRef = ref(database, "channels");
   const currentUser = useSelector((state) => state.user.currentUser);
+  const dispatch = useDispatch();
 
   useEffect(() => {
     addListeners();
     return () => off(channelsRef); // Cleanup Firebase listener
   }, []);
+
+  
+  useEffect(() => {
+    // separated only because it is a sideeffect
+    if (firstLoadRef.current && channels.length > 0) {
+      dispatch(setCurrentChannel(channels[0]));
+      setActiveChannel(channels[0])
+      firstLoadRef.current = false; // Prevent further executions
+    }
+  }, [channels]); // Runs only when `channels` updates
 
   const handleChange = (event) => {
     setChannel((prevState) => ({
@@ -78,16 +92,26 @@ const Channels = () => {
     });
   };
 
+  const changeChannel = channel => {
+    dispatch(setCurrentChannel(channel));
+    setActiveChannel(channel);
+  }
+
+  const setActiveChannel = channel => {
+    setActiveChannelId(channel.id);
+  }
+
   const displayChannels = (channels) => {
     return (channels.length > 0 &&
       channels.map((channel) => (
         <Menu.Item
           key={channel.id}
-          onClick={() => console.log(channel)}
+          onClick={() => changeChannel(channel)}
           name={channel.name}
           style={{ opacity: 0.7 }}
+          active={activeChannelId === channel.id}
         >
-          #   {channel.name}
+          # {channel.name}
         </Menu.Item>
       ))
   )};
