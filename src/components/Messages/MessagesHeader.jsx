@@ -1,5 +1,10 @@
+import { useEffect } from "react";
 import { Header, Segment, Input, Icon } from "semantic-ui-react";
-const MessagesHeader = ({currentChannel, numUniqueUsers}) => {
+const MessagesHeader = ({currentChannel, numUniqueUsers, handleSearchChange, searchLoading}) => {
+
+  useEffect(() => {
+    console.log("Search loading state:", searchLoading);
+  }, [searchLoading]);
   return (
     <Segment clearing>
       {/* Channel Title */}
@@ -14,10 +19,12 @@ const MessagesHeader = ({currentChannel, numUniqueUsers}) => {
       {/* Channel Search Input */}
       <Header floated="right">
         <Input
+          loading={searchLoading}
           size="mini"
           icon="search"
           name="searchTerm"
           placeholder="Search Messages"
+          onChange={handleSearchChange}
         />
       </Header>
     </Segment>

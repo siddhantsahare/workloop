@@ -1,4 +1,4 @@
-import { Fragment, useEffect, useState } from "react";
+import { Fragment, useEffect, useMemo, useState } from "react";
 import { Segment, Comment } from "semantic-ui-react";
 import MessagesHeader from "./MessagesHeader";
 import MessageForm from "./MessageForm";
@@ -7,14 +7,18 @@ import { useSelector } from "react-redux";
 import { off, onChildAdded, ref } from "firebase/database";
 import { database } from "../../firebase";
 import React from "react";
+import debounce from "lodash.debounce"; 
 
 const Messages = () => {
   const [messages, setMessages] = useState([]);
   const [messagesLoading, setMessagesLoading] = useState(true);
-  const currentChannel = useSelector((state) => state.channels.currentChannel);
-  const currentUser = useSelector((state) => state.user.currentUser);
   const [channelMessagesRef, setChannelMessagesRef] = useState(null);
   const [numUniqueUsers, setNumUniqueUsers] = useState(0);
+  const [searchTerm, setSearchTerm] = useState("");
+  const [filteredMessages, setFilteredMessages] = useState(false);
+  const currentChannel = useSelector((state) => state.channels.currentChannel);
+  const currentUser = useSelector((state) => state.user.currentUser);
+  const searchLoading = searchTerm.length > 0 && filteredMessages.length === 0;
 
   useEffect(() => {
     if (currentChannel && currentUser) {
@@ -32,17 +36,19 @@ const Messages = () => {
     };
   }, [currentChannel, currentUser]);
 
-  useEffect(() => {
-    if (messages.length > 0) {
-      countUniqueUsers(messages);
-    }
-  }, [messages]);
-
   const addListeners = (channelRef) => {
     const loadedMessages = [];
+
     onChildAdded(channelRef, (snap) => {
       loadedMessages.push(snap.val());
-      setMessages([...loadedMessages]);
+
+      // Batch update messages using functional setState
+      setMessages((prevMessages) => {
+        const updatedMessages = [...prevMessages, snap.val()];
+        countUniqueUsers(updatedMessages);
+        return updatedMessages;
+      });
+
       setMessagesLoading(false);
     });
   };
@@ -52,7 +58,7 @@ const Messages = () => {
       messages.map((message) => message.user?.name).filter(Boolean)
     );
     const plural = uniqueUsers.size > 1 || uniqueUsers.size === 0;
-    const numUniqueUsers = `${uniqueUsers.size} user${plural ? 's' : ''}`;
+    const numUniqueUsers = `${uniqueUsers.size} user${plural ? "s" : ""}`;
     setNumUniqueUsers(numUniqueUsers);
   };
 
@@ -67,15 +73,52 @@ const Messages = () => {
         ))
       : null;
 
+  const handleSearchChange = (event) => {
+    setSearchTerm(event.target.value.trim());
+  };
+
+  // Debounced function to filter messages
+  const filterMessages = useMemo(
+    () =>
+      debounce((term) => {
+        if (!term) {
+          setFilteredMessages([]);
+          return;
+        }
+
+        try {
+          const regex = new RegExp(term, "gi");
+          setFilteredMessages(
+            messages.filter(
+              (message) =>
+                regex.test(message.content || "") ||
+                regex.test(message.user?.name || "")
+            )
+          );
+        } catch (error) {
+          console.error(error);
+        }
+      }, 300),
+    [messages]
+  );
+
+  useEffect(() => {
+    filterMessages(searchTerm);
+  }, [searchTerm, filterMessages]);
+
   return (
     <Fragment>
       <MessagesHeader
         currentChannel={currentChannel}
         numUniqueUsers={numUniqueUsers}
+        handleSearchChange={handleSearchChange}
+        searchLoading={searchLoading}
       />
       <Segment>
         <Comment.Group className="messages">
-          {displayMessages(messages)}
+          {searchTerm
+            ? displayMessages(filteredMessages)
+            : displayMessages(messages)}
         </Comment.Group>
       </Segment>
       <MessageForm currentChannel={currentChannel} currentUser={currentUser} />
