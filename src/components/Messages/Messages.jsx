@@ -14,6 +14,7 @@ const Messages = () => {
   const currentChannel = useSelector((state) => state.channels.currentChannel);
   const currentUser = useSelector((state) => state.user.currentUser);
   const [channelMessagesRef, setChannelMessagesRef] = useState(null);
+  const [numUniqueUsers, setNumUniqueUsers] = useState(0);
 
   useEffect(() => {
     if (currentChannel && currentUser) {
@@ -31,6 +32,12 @@ const Messages = () => {
     };
   }, [currentChannel, currentUser]);
 
+  useEffect(() => {
+    if (messages.length > 0) {
+      countUniqueUsers(messages);
+    }
+  }, [messages]);
+
   const addListeners = (channelRef) => {
     const loadedMessages = [];
     onChildAdded(channelRef, (snap) => {
@@ -38,6 +45,15 @@ const Messages = () => {
       setMessages([...loadedMessages]);
       setMessagesLoading(false);
     });
+  };
+
+  const countUniqueUsers = (messages) => {
+    const uniqueUsers = new Set(
+      messages.map((message) => message.user?.name).filter(Boolean)
+    );
+    const plural = uniqueUsers.size > 1 || uniqueUsers.size === 0;
+    const numUniqueUsers = `${uniqueUsers.size} user${plural ? 's' : ''}`;
+    setNumUniqueUsers(numUniqueUsers);
   };
 
   const displayMessages = (messages) =>
@@ -53,13 +69,16 @@ const Messages = () => {
 
   return (
     <Fragment>
-      <MessagesHeader />
+      <MessagesHeader
+        currentChannel={currentChannel}
+        numUniqueUsers={numUniqueUsers}
+      />
       <Segment>
         <Comment.Group className="messages">
           {displayMessages(messages)}
         </Comment.Group>
       </Segment>
-      <MessageForm currentChannel={currentChannel} currentUser={currentUser}/>
+      <MessageForm currentChannel={currentChannel} currentUser={currentUser} />
     </Fragment>
   );
 };

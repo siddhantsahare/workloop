@@ -138,6 +138,7 @@ const MessageForm = ({ currentChannel, currentUser }) => {
           labelPosition="right"
           icon="cloud upload"
           onClick={openModal}
+          disabled={uploading}
         />
         <FileModal open={fileModal} closeModal={closeModal} uploadFile={uploadFile} />
       </Button.Group>

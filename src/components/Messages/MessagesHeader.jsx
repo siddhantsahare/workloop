@@ -1,14 +1,14 @@
 import { Header, Segment, Input, Icon } from "semantic-ui-react";
-const MessagesHeader = () => {
+const MessagesHeader = ({currentChannel, numUniqueUsers}) => {
   return (
     <Segment clearing>
       {/* Channel Title */}
       <Header fluid="true" as="h2" floated="left" style={{ marginBottom: 0 }}>
         <span>
-          Channel
-          <Icon name={"star outline"} color="black" />
+          {`# ${currentChannel && currentChannel.name}`}
+          <Icon name={"star outline"} color="black" style={{marginLeft: '5px'}}/>
         </span>
-        <Header.Subheader>2 Users</Header.Subheader>
+        <Header.Subheader>{numUniqueUsers}</Header.Subheader>
       </Header>
 
       {/* Channel Search Input */}
