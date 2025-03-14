@@ -13,23 +13,27 @@ const Messages = () => {
   const [messagesLoading, setMessagesLoading] = useState(true);
   const currentChannel = useSelector((state) => state.channels.currentChannel);
   const currentUser = useSelector((state) => state.user.currentUser);
+  const [channelMessagesRef, setChannelMessagesRef] = useState(null);
 
   useEffect(() => {
     if (currentChannel && currentUser) {
-      addListeners(currentChannel.id);
+      setMessages([]);
+      setMessagesLoading(true);
+      const newRef = ref(database, `messages/${currentChannel.id}`);
+      setChannelMessagesRef(newRef);
+      addListeners(newRef);
     }
     return () => {
-      if (currentChannel) {
-        const channelMessagesRef = ref(database, `messages/${currentChannel.id}`);
-        off(channelMessagesRef); // Proper cleanup of Firebase listener
+      if (channelMessagesRef) {
+        off(channelMessagesRef); // Cleanup Firebase listener
+        setChannelMessagesRef(null); // Reset state
       }
     };
   }, [currentChannel, currentUser]);
 
-  const addListeners = (channelId) => {
-    const channelMessagesRef = ref(database, `messages/${channelId}`);
-    let loadedMessages = []
-    onChildAdded(channelMessagesRef, (snap) => {
+  const addListeners = (channelRef) => {
+    const loadedMessages = [];
+    onChildAdded(channelRef, (snap) => {
       loadedMessages.push(snap.val());
       setMessages([...loadedMessages]);
       setMessagesLoading(false);
@@ -39,7 +43,11 @@ const Messages = () => {
   const displayMessages = (messages) =>
     messages.length
       ? messages.map((message) => (
-          <Message key={message.timestamp} message={message} user={currentUser} />
+          <Message
+            key={message.timestamp}
+            message={message}
+            user={currentUser}
+          />
         ))
       : null;
 
@@ -47,9 +55,11 @@ const Messages = () => {
     <Fragment>
       <MessagesHeader />
       <Segment>
-        <Comment.Group className="messages">{displayMessages(messages)}</Comment.Group>
+        <Comment.Group className="messages">
+          {displayMessages(messages)}
+        </Comment.Group>
       </Segment>
-      <MessageForm currentChannel={currentChannel} currentUser={currentUser} />
+      <MessageForm currentChannel={currentChannel} currentUser={currentUser}/>
     </Fragment>
   );
 };
