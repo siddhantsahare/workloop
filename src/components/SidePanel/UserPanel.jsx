@@ -1,9 +1,15 @@
 import { Grid, Header, Icon, Dropdown, Image } from "semantic-ui-react";
-import { auth } from "../../firebase";
+import { auth, database } from "../../firebase";
 import { useSelector } from "react-redux";
+import { ref, remove } from "firebase/database";
 const UserPanel = () => {
   const user = useSelector((state) => state.user.currentUser);
   const handleSignout = async () => {
+    const user = auth.currentUser;
+    if (user) {
+      const presenceRef = ref(database, `presence/${user.uid}`);
+      await remove(presenceRef); // Correct way to remove a reference in Firebase v9+
+    }
     await auth.signOut();
   };
 

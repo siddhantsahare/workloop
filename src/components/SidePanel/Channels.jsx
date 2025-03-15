@@ -12,7 +12,7 @@ import {
 } from "semantic-ui-react";
 import { useSelector, useDispatch } from "react-redux";
 import { auth, database } from "../../firebase";
-import { setCurrentChannel } from "../../actions";
+import { setCurrentChannel, setPrivateChannel } from "../../actions";
 
 const Channels = () => {
   const [channels, setChannels] = useState([]);
@@ -94,6 +94,7 @@ const Channels = () => {
 
   const changeChannel = channel => {
     dispatch(setCurrentChannel(channel));
+    dispatch(setPrivateChannel(false));
     setActiveChannel(channel);
   }
 
@@ -120,7 +121,7 @@ const Channels = () => {
 
   return (
     <>
-      <Menu.Menu style={{ paddingBottom: "2em" }}>
+      <Menu.Menu className="menu">
         <Menu.Item>
           <span>
             <Icon name="exchange" /> CHANNELS

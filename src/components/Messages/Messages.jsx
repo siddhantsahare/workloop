@@ -19,6 +19,7 @@ const Messages = () => {
   const currentChannel = useSelector((state) => state.channels.currentChannel);
   const currentUser = useSelector((state) => state.user.currentUser);
   const searchLoading = searchTerm.length > 0 && filteredMessages.length === 0;
+  const isPrivateChannel = useSelector(state => state.channels.isPrivateChannel);
 
   useEffect(() => {
     if (currentChannel && currentUser) {
@@ -35,6 +36,10 @@ const Messages = () => {
       }
     };
   }, [currentChannel, currentUser]);
+
+  useEffect(() => {
+    countUniqueUsers(messages);
+  }, [messages]);
 
   const addListeners = (channelRef) => {
     const loadedMessages = [];
@@ -105,6 +110,7 @@ const Messages = () => {
   useEffect(() => {
     filterMessages(searchTerm);
   }, [searchTerm, filterMessages]);
+
 
   return (
     <Fragment>

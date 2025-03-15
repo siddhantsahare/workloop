@@ -23,7 +23,9 @@ const Root = () => {
         navigate("/");
       } else {
         dispatch(clearUser());
-        navigate("/login");
+        if (location.pathname !== "/register") {
+          navigate("/login");
+        }      
       }
     });
 
