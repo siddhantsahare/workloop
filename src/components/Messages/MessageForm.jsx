@@ -3,6 +3,7 @@ import { Segment, Button, Input, Progress } from "semantic-ui-react";
 import { database } from "../../firebase";
 import { useState, useEffect } from "react";
 import FileModal from "./FileModal";
+import { useSelector } from "react-redux";
 
 const MessageForm = ({ currentChannel, currentUser }) => {
   const [message, setMessage] = useState("");
@@ -12,6 +13,7 @@ const MessageForm = ({ currentChannel, currentUser }) => {
   const [channelMessagesRef, setChannelMessagesRef] = useState(null);
   const [percentUploaded, setPercentUploaded] = useState(0);
   const [uploading, setUploading] = useState(false);
+  const isPrivateChannel = useSelector(state => state.channels.isPrivateChannel);
 
   useEffect(() => {
     if (currentChannel) {

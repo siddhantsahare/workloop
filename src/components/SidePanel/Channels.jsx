@@ -26,6 +26,7 @@ const Channels = () => {
   // channels listner
   const channelsRef = ref(database, "channels");
   const currentUser = useSelector((state) => state.user.currentUser);
+  const isPrivateChannel = useSelector((state) => state.channels.isPrivateChannel);
   const dispatch = useDispatch();
 
   useEffect(() => {
@@ -110,7 +111,7 @@ const Channels = () => {
           onClick={() => changeChannel(channel)}
           name={channel.name}
           style={{ opacity: 0.7 }}
-          active={activeChannelId === channel.id}
+          active={!isPrivateChannel && (activeChannelId === channel.id)}
         >
           # {channel.name}
         </Menu.Item>
