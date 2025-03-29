@@ -14,9 +14,9 @@ const Channels = () => {
   const firstLoadRef = useRef(true);
   
   const channelsRef = ref(database, "channels");
-  const messagesRef = ref(database, "messages");
   const currentUser = useSelector((state) => state.user.currentUser);
-  const dispatch = useDispatch();
+  const activeSource = useSelector(state => state.channels.activeSource);
+  const dispatch = useDispatch(); 
 
   useEffect(() => {
     addListeners();
@@ -25,7 +25,7 @@ const Channels = () => {
 
   useEffect(() => {
     if (firstLoadRef.current && channels.length > 0) {
-      dispatch(setCurrentChannel(channels[0]));
+      dispatch(setCurrentChannel(channels[0], "channels"));
       setActiveChannel(channels[0]);
       firstLoadRef.current = false;
     }
@@ -95,7 +95,7 @@ const Channels = () => {
   };
 
   const changeChannel = (channel) => {
-    dispatch(setCurrentChannel(channel));
+    dispatch(setCurrentChannel(channel, "channels"));
     dispatch(setPrivateChannel(false));
     clearNotifications(channel.id);
     setActiveChannel(channel);
@@ -111,14 +111,13 @@ const Channels = () => {
 
   const getNotificationCount = (channelId) => {
     const notification = notifications.find((n) => n.id === channelId);
-    console.log("Notification", notification);
     return notification && notification.count > 0 ? notification.count : null;
   };
 
   const displayChannels = (channels) =>
     channels.length > 0 &&
     channels.map((channel) => (
-      <Menu.Item key={channel.id} onClick={() => changeChannel(channel)} name={channel.name} active={channel.id === activeChannelId}>
+      <Menu.Item key={channel.id} onClick={() => changeChannel(channel)} name={channel.name} active={channel.id === activeChannelId && activeSource === 'channels'}>
         {getNotificationCount(channel.id) && <Label color="red">{getNotificationCount(channel.id)}</Label>}
         # {channel.name}
       </Menu.Item>

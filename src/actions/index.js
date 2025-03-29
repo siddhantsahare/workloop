@@ -12,10 +12,11 @@ export const clearUser = () => ({
 })
 
 
-export const setCurrentChannel = channel => ({
+export const setCurrentChannel = (channel, source) => ({
     type: SET_CURRENT_CHANNEL,
     payload: {
-        currentChannel: channel
+        currentChannel: channel,
+        activeSource: source
     }
 })
 

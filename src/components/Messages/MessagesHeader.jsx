@@ -1,23 +1,23 @@
-import { useEffect } from "react";
-import { useSelector } from "react-redux";
-import { Header, Segment, Input, Icon } from "semantic-ui-react";
-const MessagesHeader = ({
-  currentChannel,
-  numUniqueUsers,
-  handleSearchChange,
-  searchLoading,
-}) => {
-  const isPrivateChannel = useSelector(
-    (state) => state.channels.isPrivateChannel
-  );
-  
-  const displayChannelName = () => {
-    console.log("Current Channel:", currentChannel);
-    return currentChannel
-      ? `${isPrivateChannel ? "@" : "#"}${currentChannel.name}`
-      : "";
-  };
-  return (
+  import { useSelector } from "react-redux";
+  import { Header, Segment, Input, Icon } from "semantic-ui-react";
+  const MessagesHeader = ({
+    currentChannel,
+    numUniqueUsers,
+    handleSearchChange,
+    searchLoading,
+    isChannelPinned,
+    handlePinned
+  }) => {
+    const isPrivateChannel = useSelector(
+      (state) => state.channels.isPrivateChannel
+    );
+    
+    const displayChannelName = () => {
+      return currentChannel
+        ? `${isPrivateChannel ? "@" : "#"}${currentChannel.name}`
+        : "";
+    };
+    return (
     <Segment clearing>
       {/* Channel Title */}
       <Header fluid="true" as="h2" floated="left" style={{ marginBottom: 0 }}>
@@ -25,9 +25,10 @@ const MessagesHeader = ({
           {displayChannelName()}
           {!isPrivateChannel && (
             <Icon
-              name={"star outline"}
-              color="black"
+              name={isChannelPinned ? "star" : "star outline"}
+              color={isChannelPinned ? 'yellow' : 'black'}
               style={{ marginLeft: "5px" }}
+              onClick={handlePinned}
             />
           )}
         </span>

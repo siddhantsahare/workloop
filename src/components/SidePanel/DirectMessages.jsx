@@ -15,6 +15,7 @@ import { setPrivateChannel, setCurrentChannel } from "../../actions";
 
 const DirectMessages = () => {
   const currentUser = useSelector((state) => state.user.currentUser);
+  const activeSource = useSelector(state => state.channels.activeSource);
   const [users, setUsers] = useState([]);
   const [activeChannel, setActiveChannel] = useState(null);
   const dispatch = useDispatch();
@@ -112,7 +113,7 @@ const DirectMessages = () => {
       id: channelId,
       name: user.name,
     };
-    dispatch(setCurrentChannel(channelData));
+    dispatch(setCurrentChannel(channelData, "directMessages"));
     dispatch(setPrivateChannel(true));
     setActiveChannel(user.uid)
   };
@@ -131,7 +132,7 @@ const DirectMessages = () => {
           key={user.uid}
           onClick={() => changeChannel(user)}
           style={{ opacity: 0.7, fontStyle: "italic" }}
-          active={isPrivateChannel && (activeChannel === user.uid)}
+          active={isPrivateChannel && (activeChannel === user.uid) && activeSource === "directMessages"}
         >
           <Icon name="circle" color={isUserOnline(user) ? "green" : "red"} />@{" "}
           {user.name}

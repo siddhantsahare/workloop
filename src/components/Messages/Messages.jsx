@@ -1,10 +1,10 @@
-import { Fragment, useEffect, useMemo, useState } from "react";
+import { Fragment, useEffect, useMemo, useRef, useState } from "react";
 import { Segment, Comment } from "semantic-ui-react";
 import MessagesHeader from "./MessagesHeader";
 import MessageForm from "./MessageForm";
 import Message from "./Message";
 import { useSelector } from "react-redux";
-import { off, onChildAdded, ref } from "firebase/database";
+import { get, off, onChildAdded, ref, remove, update } from "firebase/database";
 import { database } from "../../firebase";
 import React from "react";
 import debounce from "lodash.debounce"; 
@@ -16,10 +16,10 @@ const Messages = () => {
   const [numUniqueUsers, setNumUniqueUsers] = useState(0);
   const [searchTerm, setSearchTerm] = useState("");
   const [filteredMessages, setFilteredMessages] = useState(false);
+  const [isChannelPinned, setIsChannelPinned] = useState(false);
   const currentChannel = useSelector((state) => state.channels.currentChannel);
   const currentUser = useSelector((state) => state.user.currentUser);
   const searchLoading = searchTerm.length > 0 && filteredMessages.length === 0;
-  const isPrivateChannel = useSelector(state => state.channels.isPrivateChannel);
 
   useEffect(() => {
     if (currentChannel && currentUser) {
@@ -28,6 +28,7 @@ const Messages = () => {
       const newRef = ref(database, `messages/${currentChannel.id}`);
       setChannelMessagesRef(newRef);
       addListeners(newRef);
+      fetchPinnedState(); 
     }
     return () => {
       if (channelMessagesRef) {
@@ -40,6 +41,16 @@ const Messages = () => {
   useEffect(() => {
     countUniqueUsers(messages);
   }, [messages]);
+
+  
+  useEffect(() => {
+    filterMessages(searchTerm);
+  }, [searchTerm]);
+
+  
+  useEffect(() => {
+    pinnedChannel();
+  }, [isChannelPinned]);
 
   const addListeners = (channelRef) => {
     const loadedMessages = [];
@@ -107,9 +118,43 @@ const Messages = () => {
     [messages]
   );
 
-  useEffect(() => {
-    filterMessages(searchTerm);
-  }, [searchTerm, filterMessages]);
+
+  const fetchPinnedState = async () => {
+      const pinnedRef = ref(database, `users/${currentUser.uid}/pinned/${currentChannel.id}`);
+      try {
+        const snapshot = await get(pinnedRef);
+        setIsChannelPinned(snapshot.exists());
+      } catch (error) {
+        console.error("Error fetching pinned state:", error);
+      }
+  };
+
+  const handlePinned = () => {
+    setIsChannelPinned(prev => !prev);
+  }
+
+  const pinnedChannel = async () => {
+    if (!currentChannel || !currentUser) return; 
+    try {
+      if(isChannelPinned){
+        await update(ref(database, `users/${currentUser.uid}/pinned`), {
+          [currentChannel.id]: {
+            name: currentChannel.name,
+            details: currentChannel.details,
+            createdBy: {
+              name: currentChannel.createdBy.name,
+              avatar: currentChannel.createdBy.avatar,
+            }
+          }
+        });
+      } else {
+        await remove(ref(database, `users/${currentUser.uid}/pinned/${currentChannel.id}`));
+      }
+    }catch(err) {
+      console.log(err);
+    }
+  }
+
 
 
   return (
@@ -119,6 +164,8 @@ const Messages = () => {
         numUniqueUsers={numUniqueUsers}
         handleSearchChange={handleSearchChange}
         searchLoading={searchLoading}
+        handlePinned={handlePinned}
+        isChannelPinned={isChannelPinned}
       />
       <Segment>
         <Comment.Group className="messages">
