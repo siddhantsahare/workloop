@@ -3,15 +3,18 @@ import UserPanel from "./UserPanel";
 import Channels from "./Channels";
 import DirectMessages from "./DirectMessages";
 import Pinned from "./Pinned";
+import { useSelector } from "react-redux";
 
 const SidePanel = ()  => {
+
+    const primaryColor = useSelector(state => state.colors.primaryColor);
     return (
         <Menu
         size="large"
         inverted
         fixed="left"
         vertical
-        style={{ background: "#4c3c4c", fontSize: "1.2rem" }}
+        style={{ background: primaryColor, fontSize: "1.2rem" }}
       >
         <UserPanel />
         <Pinned />
