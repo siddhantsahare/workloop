@@ -1,4 +1,4 @@
-import { CLEAR_USER, SET_CURRENT_CHANNEL,SET_PRIVATE_CHANNEL, SET_USER } from './types';
+import { CLEAR_USER, SET_CURRENT_CHANNEL,SET_PRIVATE_CHANNEL, SET_USER, SET_USER_POSTS } from './types';
 
 export const setUser = (user) => ({
     type: SET_USER,
@@ -25,6 +25,14 @@ export const setPrivateChannel = isPrivateChannel => ({
     payload: {
         isPrivateChannel
     }
-})
+});
+
+export const setUserPosts = userPosts => ({
+    type: SET_USER_POSTS,
+    payload: {
+        userPosts
+    }
+});
+
 
 

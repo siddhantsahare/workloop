@@ -3,11 +3,12 @@ import { Segment, Comment } from "semantic-ui-react";
 import MessagesHeader from "./MessagesHeader";
 import MessageForm from "./MessageForm";
 import Message from "./Message";
-import { useSelector } from "react-redux";
+import { useDispatch, useSelector } from "react-redux";
 import { get, off, onChildAdded, ref, remove, update } from "firebase/database";
 import { database } from "../../firebase";
 import React from "react";
 import debounce from "lodash.debounce"; 
+import { setUserPosts } from "../../actions";
 
 const Messages = () => {
   const [messages, setMessages] = useState([]);
@@ -20,6 +21,7 @@ const Messages = () => {
   const currentChannel = useSelector((state) => state.channels.currentChannel);
   const currentUser = useSelector((state) => state.user.currentUser);
   const searchLoading = searchTerm.length > 0 && filteredMessages.length === 0;
+  const dispatch = useDispatch();
 
   useEffect(() => {
     if (currentChannel && currentUser) {
@@ -64,7 +66,7 @@ const Messages = () => {
         countUniqueUsers(updatedMessages);
         return updatedMessages;
       });
-
+      countUserPosts(loadedMessages);
       setMessagesLoading(false);
     });
   };
@@ -154,6 +156,21 @@ const Messages = () => {
       console.log(err);
     }
   }
+
+  const countUserPosts = messages => {
+    let userPosts = messages.reduce((acc, message) => {
+      if (message.user.name in acc) {
+        acc[message.user.name].count += 1;
+      } else {
+        acc[message.user.name] = {
+          avatar: message.user.avatar,
+          count: 1
+        };
+      }
+      return acc;
+    }, {});
+    dispatch(setUserPosts(userPosts));
+  };
 
 
 
