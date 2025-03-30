@@ -28,15 +28,19 @@ const Channels = () => {
   const [modal, setModal] = useState(false);
   const [activeChannelId, setActiveChannelId] = useState("");
   const firstLoadRef = useRef(true);
+  const [typingRef, setTypingRef] = useState(null);
 
   const channelsRef = ref(database, "channels");
   const currentUser = useSelector((state) => state.user.currentUser);
+  const currentChannel = useSelector((state) => state.channels.currentChannel);
   const activeSource = useSelector((state) => state.channels.activeSource);
   const dispatch = useDispatch();
 
   useEffect(() => {
     addListeners();
-    return () => off(channelsRef);
+    return () => {
+      off(channelsRef);
+    }
   }, []);
 
   useEffect(() => {
@@ -45,8 +49,11 @@ const Channels = () => {
       setActiveChannel(channels[0]);
       clearNotifications(channels[0].id);
       firstLoadRef.current = false;
+      if (currentChannel && currentUser) { 
+        setTypingRef(ref(database, `typing/${currentChannel.id}/${currentUser.uid}`));
+      }    
     }
-  }, [channels]);
+  }, [channels, currentChannel, currentUser]);
 
   const handleChange = (event) => {
     setChannel((prevState) => ({
@@ -128,6 +135,7 @@ const Channels = () => {
 
   const changeChannel = (channel) => {
     dispatch(setCurrentChannel(channel, "channels"));
+    if (typingRef) remove(typingRef);
     dispatch(setPrivateChannel(false));
     setActiveChannel(channel);
     clearNotifications(channel.id);

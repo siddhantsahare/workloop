@@ -1,66 +1,78 @@
-import { push, ref, set, serverTimestamp } from "firebase/database";
-import { Segment, Button, Input, Progress } from "semantic-ui-react";
+import { push, ref, set, remove, serverTimestamp, off } from "firebase/database";
+import { Segment, Button, Input, Progress, Icon } from "semantic-ui-react";
 import { database } from "../../firebase";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import FileModal from "./FileModal";
-import { useSelector } from "react-redux";
+import Picker from "@emoji-mart/react";
+import data from "@emoji-mart/data";
 
 const MessageForm = ({ currentChannel, currentUser }) => {
   const [message, setMessage] = useState("");
   const [loading, setLoading] = useState(false);
   const [errors, setErrors] = useState([]);
   const [fileModal, setFileModal] = useState(false);
-  const [channelMessagesRef, setChannelMessagesRef] = useState(null);
   const [percentUploaded, setPercentUploaded] = useState(0);
   const [uploading, setUploading] = useState(false);
-  const isPrivateChannel = useSelector(state => state.channels.isPrivateChannel);
+  const [emojiPicker, setEmojiPicker] = useState(false);
+  const messageInputRef = useRef();
+
+  // Firebase references stored in useRef to persist across renders
+  const channelMessagesRef = useRef(null);
+  const typingRef = useRef(null);
 
   useEffect(() => {
-    if (currentChannel) {
-      setChannelMessagesRef(ref(database, `messages/${currentChannel.id}`));
+    if (currentChannel && currentUser) {
+      channelMessagesRef.current = ref(database, `messages/${currentChannel.id}`);
+      typingRef.current = ref(database, `typing/${currentChannel.id}/${currentUser.uid}`);
     }
-    return () => setChannelMessagesRef(null); // Cleanup on unmount
-  }, [currentChannel]);
+
+    return () => {
+      // Cleanup Firebase listeners on unmount
+      if (channelMessagesRef.current) off(channelMessagesRef.current);
+      if (typingRef.current) off(typingRef.current);
+    };
+  }, [currentChannel, currentUser]);
 
   const onHandleChange = (event) => {
     setMessage(event.target.value);
+    if (typingRef.current) {
+      set(typingRef.current, { user: currentUser.displayName });
+    }
   };
 
-  const createMessage = (imageData = null) => {
-    const newMessage = {
+  const onKeyDown = (event) => {
+    if (event.ctrlKey && event.key === "Enter") {
+      sendMessage();
+    }
+  };
+
+  const createMessage = useCallback((imageData = null) => {
+    return {
       timestamp: serverTimestamp(),
       user: {
         id: currentUser?.uid,
         name: currentUser?.displayName,
         avatar: currentUser?.photoURL,
       },
+      ...(imageData ? { image: imageData } : { content: message }),
     };
-
-    if (imageData) {
-      newMessage.image = imageData; // Storing Base64 image
-    } else {
-      newMessage.content = message;
-    }
-
-    return newMessage;
-  };
-
-  const openModal = () => setFileModal(true);
-  const closeModal = () => setFileModal(false);
+  }, [currentUser, message]);
 
   const sendMessage = async () => {
     if (!message.trim()) {
       setErrors([...errors, { message: "Add a message" }]);
       return;
     }
-    if (!channelMessagesRef) return;
+    if (!channelMessagesRef.current) return;
 
     setLoading(true);
     try {
-      const newMessageRef = push(channelMessagesRef);
+      const newMessageRef = push(channelMessagesRef.current);
       await set(newMessageRef, createMessage());
+
       setMessage("");
       setErrors([]);
+      if (typingRef.current) remove(typingRef.current);
     } catch (err) {
       console.error(err);
       setErrors([...errors, err]);
@@ -77,15 +89,13 @@ const MessageForm = ({ currentChannel, currentUser }) => {
 
     reader.onprogress = (event) => {
       if (event.lengthComputable) {
-        const progress = Math.round((event.loaded / event.total) * 100);
-        setPercentUploaded(progress);
+        setPercentUploaded(Math.round((event.loaded / event.total) * 100));
       }
     };
 
     setUploading(true);
     reader.onloadend = async () => {
-      const base64Data = reader.result;
-      await sendFileMessage(base64Data);
+      await sendFileMessage(reader.result);
       setUploading(false);
       setPercentUploaded(0);
     };
@@ -98,11 +108,11 @@ const MessageForm = ({ currentChannel, currentUser }) => {
   };
 
   const sendFileMessage = async (fileUrl) => {
-    if (!channelMessagesRef) return;
+    if (!channelMessagesRef.current) return;
 
     setLoading(true);
     try {
-      const newMessageRef = push(channelMessagesRef);
+      const newMessageRef = push(channelMessagesRef.current);
       await set(newMessageRef, createMessage(fileUrl));
     } catch (err) {
       console.error(err);
@@ -112,48 +122,72 @@ const MessageForm = ({ currentChannel, currentUser }) => {
     }
   };
 
+  const handleBlur = () => {
+    if (typingRef.current) remove(typingRef.current);
+  };
+
+  const handleTogglePicker = () => {
+    setEmojiPicker((prev) => !prev);
+  };
+
+  const handleAddEmoji = (emoji) => {
+    setMessage((prevMessage) => `${prevMessage} ${emoji.native} `);
+    setEmojiPicker(false);
+    setTimeout(() => messageInputRef.current?.focus(), 0);
+  };
+
   return (
     <Segment className="message__form">
+      {/* Emoji Picker */}
+      {emojiPicker && (
+        <div className="emoji-picker">
+          <Picker data={data} onEmojiSelect={handleAddEmoji} />
+        </div>
+      )}
+
       <Input
         fluid
-        name="message"
-        style={{ marginBottom: "0.7em" }}
-        label={<Button icon="add" />}
+        ref={messageInputRef}
         value={message}
-        labelPosition="left"
-        placeholder="Write your message"
+        placeholder="Write a message..."
         onChange={onHandleChange}
-        className={errors.some((err) => err.message.includes("message")) ? "error" : ""}
-      />
-      <Button.Group icon widths="2">
+        onKeyDown={onKeyDown}
+        onBlur={handleBlur}
+        className="message__input"
+        labelPosition="left"
+        action
+      >
         <Button
-          color="teal"
-          content="Add Reply"
-          labelPosition="left"
-          icon="edit"
-          disabled={loading}
-          onClick={sendMessage}
+          icon={<Icon name={emojiPicker ? "close" : "smile outline"} />}
+          onClick={handleTogglePicker}
+          className="emoji-button"
         />
+        <input />
+        {/* Upload Button */}
         <Button
-          color="orange"
-          content="Upload Media"
-          labelPosition="right"
-          icon="cloud upload"
-          onClick={openModal}
+          icon="paperclip"
+          color="grey"
+          onClick={() => setFileModal(true)}
           disabled={uploading}
+          className="upload-button"
         />
-        <FileModal open={fileModal} closeModal={closeModal} uploadFile={uploadFile} />
-      </Button.Group>
+        {/* Send Button */}
+        <Button
+          icon="send"
+          color="blue"
+          disabled={!message.trim()}
+          onClick={sendMessage}
+          className="send-button"
+        />
+      </Input>
 
+      <FileModal open={fileModal} closeModal={() => setFileModal(false)} uploadFile={uploadFile} />
+
+      {/* Progress Bar */}
       {uploading && (
-        <Progress
-          percent={percentUploaded}
-          progress
-          indicating
-          size="small"
-          color="green"
-          style={{ marginTop: "10px" }}
-        />
+        <div className="progress-container">
+          <progress value={percentUploaded} max="100" className="progress-bar" />
+        </div>
       )}
     </Segment>
   );

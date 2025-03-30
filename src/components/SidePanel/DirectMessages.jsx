@@ -15,7 +15,7 @@ import { setPrivateChannel, setCurrentChannel } from "../../actions";
 
 const DirectMessages = () => {
   const currentUser = useSelector((state) => state.user.currentUser);
-  const activeSource = useSelector(state => state.channels.activeSource);
+  const activeSource = useSelector((state) => state.channels.activeSource);
   const [users, setUsers] = useState([]);
   const [activeChannel, setActiveChannel] = useState(null);
   const dispatch = useDispatch();
@@ -24,60 +24,13 @@ const DirectMessages = () => {
   const usersRef = useRef(ref(database, "users"));
   const presenceRef = useRef(ref(database, "presence"));
   const connectedRef = useRef(ref(database, ".info/connected"));
-  const isPrivateChannel = useSelector((state) => state.channels.isPrivateChannel);
 
-  // Add Listeners to Fetch Users
-  const addListeners = useCallback((currentUserUid) => {
-    // Listen for new users added to the "users" node
-    const usersListener = onChildAdded(usersRef.current, (snap) => {
-      if (currentUserUid !== snap.key) {
-        let user = { ...snap.val(), uid: snap.key, status: "offline" };
-  
-        // Prevent duplicates
-        setUsers((prevUsers) => {
-          if (prevUsers.some((u) => u.uid === user.uid)) {
-            return prevUsers; // Return existing users if already present
-          }
-          return [...prevUsers, user];
-        });
-      }
-    });
+  const isPrivateChannel = useSelector(
+    (state) => state.channels.isPrivateChannel
+  );
 
-    // Track when the current user connects to Firebase
-    const connectedListener = onValue(connectedRef.current, (snap) => {
-      if (snap.val() === true) {
-        const userStatusRef = ref(database, `presence/${currentUserUid}`);
-
-        // Set user online
-        set(userStatusRef, true)
-          .then(() => onDisconnect(userStatusRef).remove()) // Remove only when the user disconnects
-          .catch(console.error);
-      }
-    });
-
-    // Handle when users come online
-    const onlineListener = onChildAdded(presenceRef.current, (snap) => {
-      if (currentUserUid !== snap.key) {
-        console.log("User online:", snap.key);
-        addStatusToUser(snap.key, true);
-      }
-    });
-
-    // Handle when users go offline
-    const offlineListener = onChildRemoved(presenceRef.current, (snap) => {
-      if (currentUserUid !== snap.key) {
-        console.log("User offline:", snap.key);
-        addStatusToUser(snap.key, false);
-      }
-    });
-
-    return () => {
-      off(usersRef.current, "child_added", usersListener);
-      off(connectedRef.current, "value", connectedListener);
-      off(presenceRef.current, "child_added", onlineListener);
-      off(presenceRef.current, "child_removed", offlineListener);
-    };
-  }, []);
+  // Avoid duplicate listener initialization
+  const listenersInitializedRef = useRef(false);
 
   // Update user status (online/offline)
   const addStatusToUser = (userId, isConnected) => {
@@ -88,16 +41,59 @@ const DirectMessages = () => {
           : user
       )
     );
-  };
+  };  
 
-  // Effect to set up and clean up listeners
+  // Add Listeners to Fetch Users
   useEffect(() => {
-    if (currentUser) {
-      const removeListeners = addListeners(currentUser.uid);
-      return removeListeners; // Cleanup function to remove listeners on unmount
-    }
-    return () => setUsers([]); // Reset users on unmount
-  }, [currentUser, addListeners]);
+    if (!currentUser || listenersInitializedRef.current) return;
+
+    listenersInitializedRef.current = true;
+
+    // Listen for new users added to the "users" node
+    const usersListener = onChildAdded(usersRef.current, (snap) => {
+      if (currentUser.uid !== snap.key) {
+        let user = { ...snap.val(), uid: snap.key, status: "offline" };
+
+        // Prevent duplicates
+        setUsers((prevUsers) =>
+          prevUsers.some((u) => u.uid === user.uid)
+            ? prevUsers
+            : [...prevUsers, user]
+        );
+      }
+    });
+
+    // Track when the current user connects to Firebase
+    const connectedListener = onValue(connectedRef.current, (snap) => {
+      if (snap.val() === true) {
+        const userStatusRef = ref(database, `presence/${currentUser.uid}`);
+        set(userStatusRef, true)
+          .then(() => onDisconnect(userStatusRef).remove())
+          .catch(console.error);
+      }
+    });
+
+    // Handle users going online/offline
+    const onlineListener = onChildAdded(presenceRef.current, (snap) => {
+      if (currentUser.uid !== snap.key) {
+        addStatusToUser(snap.key, true);
+      }
+    });
+
+    const offlineListener = onChildRemoved(presenceRef.current, (snap) => {
+      if (currentUser.uid !== snap.key) {
+        addStatusToUser(snap.key, false);
+      }
+    });
+
+    return () => {
+      off(usersRef.current, "child_added", usersListener);
+      off(connectedRef.current, "value", connectedListener);
+      off(presenceRef.current, "child_added", onlineListener);
+      off(presenceRef.current, "child_removed", offlineListener);
+      listenersInitializedRef.current = false;
+    };
+  }, [currentUser, addStatusToUser]);
 
   // Check if user is online
   const isUserOnline = (user) => user.status === "online";
@@ -107,16 +103,20 @@ const DirectMessages = () => {
       ? `${userId}/${currentUser.uid}`
       : `${currentUser.uid}/${userId}`;
   };
-  const changeChannel = (user) => {
-    const channelId = getChannelId(user.uid);
-    const channelData = {
-      id: channelId,
-      name: user.name,
-    };
-    dispatch(setCurrentChannel(channelData, "directMessages"));
-    dispatch(setPrivateChannel(true));
-    setActiveChannel(user.uid)
-  };
+
+  const changeChannel = useCallback(
+    (user) => {
+      const channelId = getChannelId(user.uid);
+      const channelData = {
+        id: channelId,
+        name: user.name,
+      };
+      dispatch(setCurrentChannel(channelData, "directMessages"));
+      dispatch(setPrivateChannel(true));
+      setActiveChannel(user.uid);
+    },
+    [dispatch, currentUser]
+  );
 
   return (
     <Menu.Menu className="menu">
@@ -132,9 +132,13 @@ const DirectMessages = () => {
           key={user.uid}
           onClick={() => changeChannel(user)}
           style={{ opacity: 0.7, fontStyle: "italic" }}
-          active={isPrivateChannel && (activeChannel === user.uid) && activeSource === "directMessages"}
+          active={
+            isPrivateChannel &&
+            activeChannel === user.uid &&
+            activeSource === "directMessages"
+          }
         >
-          <Icon name="circle" color={isUserOnline(user) ? "green" : "red"} />@{" "}
+          <Icon name="circle" color={isUserOnline(user) ? "green" : "red"} />@
           {user.name}
         </Menu.Item>
       ))}

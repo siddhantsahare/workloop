@@ -17,7 +17,7 @@ const Message = ({ message, user }) => {
             <img
               src={message.image}
               alt="Uploaded file"
-              style={{ maxWidth: "200px", borderRadius: "5px" }}
+              style={{ maxWidth: "500px", borderRadius: "5px" }}
             />
           ) : (
             <p>{message.content}</p>
