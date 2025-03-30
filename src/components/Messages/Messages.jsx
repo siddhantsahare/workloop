@@ -22,6 +22,7 @@ const Messages = () => {
   const currentUser = useSelector((state) => state.user.currentUser);
   const searchLoading = searchTerm.length > 0 && filteredMessages.length === 0;
   const dispatch = useDispatch();
+  const [userPosts, setUserPostsState] = useState({});
 
   useEffect(() => {
     if (currentChannel && currentUser) {
@@ -49,28 +50,35 @@ const Messages = () => {
     filterMessages(searchTerm);
   }, [searchTerm]);
 
+  useEffect(() => {
+    if (Object.keys(userPosts).length > 0) {
+        dispatch(setUserPosts(userPosts));  // Only dispatch after rendering
+    }
+}, [userPosts, dispatch]);
   
   useEffect(() => {
     pinnedChannel();
   }, [isChannelPinned]);
 
   const addListeners = (channelRef) => {
-    const loadedMessages = [];
-
     onChildAdded(channelRef, (snap) => {
-      loadedMessages.push(snap.val());
-
-      // Batch update messages using functional setState
       setMessages((prevMessages) => {
-        const updatedMessages = [...prevMessages, snap.val()];
-        countUniqueUsers(updatedMessages);
-        return updatedMessages;
+        const newMessage = snap.val();
+        
+        // Prevent duplicate messages
+        if (!prevMessages.some(msg => msg.timestamp === newMessage.timestamp)) {
+          const updatedMessages = [...prevMessages, newMessage];
+          countUniqueUsers(updatedMessages);
+          countUserPosts(updatedMessages);
+          return updatedMessages;
+        }
+        
+        return prevMessages; // Return unchanged state if duplicate
       });
-      countUserPosts(loadedMessages);
       setMessagesLoading(false);
     });
   };
-
+  
   const countUniqueUsers = (messages) => {
     const uniqueUsers = new Set(
       messages.map((message) => message.user?.name).filter(Boolean)
@@ -169,7 +177,7 @@ const Messages = () => {
       }
       return acc;
     }, {});
-    dispatch(setUserPosts(userPosts));
+    setUserPostsState(userPosts); 
   };
 
 

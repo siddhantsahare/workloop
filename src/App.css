@@ -56,3 +56,7 @@ body,
   height: 35px;
   transform: rotate(225deg);
 }
+
+.avatar-modal {
+  padding: 20px;
+}

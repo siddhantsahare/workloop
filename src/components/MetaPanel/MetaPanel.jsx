@@ -26,7 +26,8 @@ const MetaPanel = () => {
   const displayTopPosters = () => {
     if (userPosts) {
       return Object.entries(userPosts)
-        .sort((a, b) => b[1] - a[1])
+        .sort((a, b) => b[1].count - a[1].count)
+        .slice(0, 5)
         .map(([name, value], index) => (
           <List.Item key={index}>
             <Image avatar src={value.avatar} />
@@ -35,8 +36,7 @@ const MetaPanel = () => {
               <List.Description>{formatCount(value.count)}</List.Description>
             </List.Content>
           </List.Item>
-        ))
-        .slice(0, 5);
+        ));
     }
   };
 

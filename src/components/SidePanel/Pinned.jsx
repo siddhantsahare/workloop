@@ -62,7 +62,7 @@ const Pinned = () => {
           <Icon name="exchange" /> PINNED
         </span>
         ({pinnedChannels.length}){" "}
-        <Icon name="add" onClick={() => setModal(true)} />
+        <Icon name="pin" />
       </Menu.Item>
       {displayChannels(pinnedChannels)}
     </Menu.Menu>
